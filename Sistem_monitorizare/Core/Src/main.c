@@ -64,9 +64,14 @@ ADC_HandleTypeDef hadc1;
 
 ETH_HandleTypeDef heth;
 
+TIM_HandleTypeDef htim2;
+
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+#define ADC_RESOLUTION 4095.0f
+#define ADC_REF_VOLTAGE 3.3f
+#define LM35_VOLTAGE_TO_TEMP_CONV 0.01f // 10 mV/°C
 
 /* USER CODE END PV */
 
@@ -77,16 +82,15 @@ static void MX_ETH_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_HS_USB_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 // Declara funcția de citire a temperaturii
-#define ADC_MAX_VALUE_16B 65535U
+void ReadTemperatureAndDustLevels(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 // Redirecționare printf -> UART3
-
-void ReadTwoChannels(void);
 
 
 int _write(int file, char *ptr, int len)
@@ -130,68 +134,73 @@ int main(void)
   MX_USART3_UART_Init();
   MX_USB_OTG_HS_USB_Init();
   MX_ADC1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  printf("Sistem pornit. ADC1 cu 2 canale (Ch10, Ch15) - LM35.\r\n");
+
+  printf("Sistem pornit. Începe monitorizarea..\r\n");
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  	 ReadTwoChannels();
-	  // Pause 1 second
-	     HAL_Delay(1000);
-
+	  ReadTemperatureAndDustLevels();
+	  HAL_Delay(1000); // Pauză de 1 secundă între citiri
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+
+ }
+
   /* USER CODE END 3 */
 }
-void ReadTwoChannels(void)
-{
-    // 1. Pornim conversia ADC
-    if (HAL_ADC_Start(&hadc1) != HAL_OK)
-    {
-        printf("Eroare la HAL_ADC_Start\r\n");
+
+void ReadTemperatureAndDustLevels(void) {
+    uint32_t rawValCh10, rawValCh15, rawValCh5;
+    float voltageCh10, voltageCh15;
+    float tempC_Ch10, tempC_Ch15, dustDensity;
+
+    // Pornim ADC
+    if (HAL_ADC_Start(&hadc1) != HAL_OK) {
+        printf("Eroare la pornirea ADC!\r\n");
         return;
     }
 
-    // 2. Așteptare și citire canalul de Rank 1 (Channel 10)
-    if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
-    {
-        uint32_t rawValCh10 = HAL_ADC_GetValue(&hadc1);
-        // Convertim la tensiune (12 biți la 3.3 V)
-        float voltageCh10 = ((float)rawValCh10 / 4095.0f) * 3.3f;
-        // LM35 => 10mV / °C => 0.01 V / °C
-        float tempC_Ch10 = voltageCh10 / 0.01f;
-
-        // 3. Așteptare și citire canalul de Rank 2 (Channel 15)
-        if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
-        {
-            uint32_t rawValCh15 = HAL_ADC_GetValue(&hadc1);
-            float voltageCh15 = ((float)rawValCh15 / 4095.0f) * 3.3f;
-            float tempC_Ch15 = voltageCh15 / 0.01f;
-
-            // Oprim ADC (opțional, dacă nu e modul continuu)
-            HAL_ADC_Stop(&hadc1);
-
-            // 4. Afișare valori
-            printf("Ch10: raw=%lu, T=%.2f C | Ch15: raw=%lu, T=%.2f C\r\n",
-                   rawValCh10, tempC_Ch10,
-                   rawValCh15, tempC_Ch15);
-        }
-        else
-        {
-            // Eroare la al doilea Poll
-            printf("Eroare la PollForConversion ch15\r\n");
-        }
+    // Citim canalul 10 (LM35_1)
+    if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
+        rawValCh10 = HAL_ADC_GetValue(&hadc1);
+        voltageCh10 = (rawValCh10 / ADC_RESOLUTION) * ADC_REF_VOLTAGE;
+        tempC_Ch10 = voltageCh10 / LM35_VOLTAGE_TO_TEMP_CONV;
+    } else {
+        printf("Eroare la citirea canalului 10 (LM35_1)!\r\n");
+        return;
     }
-    else
-    {
-        // Eroare la primul Poll
-        printf("Eroare la PollForConversion ch10\r\n");
+
+    // Citim canalul 15 (LM35_2)
+    if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
+        rawValCh15 = HAL_ADC_GetValue(&hadc1);
+        voltageCh15 = (rawValCh15 / ADC_RESOLUTION) * ADC_REF_VOLTAGE;
+        tempC_Ch15 = voltageCh15 / LM35_VOLTAGE_TO_TEMP_CONV;
+    } else {
+        printf("Eroare la citirea canalului 15 (LM35_2)!\r\n");
+        return;
     }
+
+    // Citim canalul 5 (Senzor praf)
+    if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
+           float dustVoltage = HAL_ADC_GetValue(&hadc1) * (ADC_REF_VOLTAGE / ADC_RESOLUTION);
+           dustDensity = dustVoltage * 100.0f; // presupunând un factor de 100 μg/m^3 per volt
+       } else {
+           printf("Eroare la citirea canalului 5 (Senzor praf)!\r\n");
+           return;
+       }
+
+    HAL_ADC_Stop(&hadc1);
+
+    // Afișăm valorile
+    printf("LM35_1: %.2f C, LM35_2: %.2f C, Praful: %.2f μg/m^3\r\n",
+               tempC_Ch10, tempC_Ch15, dustDensity);
 }
 
 /**
@@ -281,7 +290,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.NbrOfConversion = 2;
+  hadc1.Init.NbrOfConversion = 3;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -321,6 +330,15 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_15;
   sConfig.Rank = ADC_REGULAR_RANK_2;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_5;
+  sConfig.Rank = ADC_REGULAR_RANK_3;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -377,6 +395,55 @@ static void MX_ETH_Init(void)
   /* USER CODE BEGIN ETH_Init 2 */
 
   /* USER CODE END ETH_Init 2 */
+
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 839;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 999;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 320;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
 
 }
 
