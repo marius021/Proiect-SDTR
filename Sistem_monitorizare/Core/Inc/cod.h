@@ -22,11 +22,15 @@ void ReadSensors(void);
 void SendDustAlert(float dustDensity);
 void StartSensorTask(void *argument);
 void StartCommTask(void *argument);
+void SendDustAlert(float dustDensity);
+void BluetoothReceiveTask(void *argument);
 
 // External handles
 extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim2;
-extern UART_HandleTypeDef huart3;
+extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart1;
+
 
 // Semaphore handle
 extern osSemaphoreId_t alertSemaphoreHandle;

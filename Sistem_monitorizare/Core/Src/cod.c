@@ -5,12 +5,10 @@
 #define ADC_RESOLUTION 4095.0f
 #define ADC_REF_VOLTAGE 3.3f
 #define LM35_VOLTAGE_TO_TEMP_CONV 0.01f // 10 mV/°C
-#define DUST_THRESHOLD 50.0f
-#define FAN_THRESHOLD 40.0f // Temperature threshold for fan activation
+#define DUST_THRESHOLD 20.0f
+#define FAN_THRESHOLD 50.0f // Temperature threshold for fan activation
 #define FAN_GPIO_PORT GPIOA
 #define FAN_GPIO_PIN GPIO_PIN_6
-#define SERVER_IP "192.168.0.100"
-#define SERVER_PORT 8080
 
 // Global variables (volatile for shared access between tasks)
 volatile float lm35_1_temp = 0.0f;
@@ -19,81 +17,60 @@ volatile float dust_density = 0.0f;
 
 // Turn on the fan
 void Fan_ON(void) {
-	HAL_GPIO_WritePin(FAN_GPIO_PORT, FAN_GPIO_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(FAN_GPIO_PORT, FAN_GPIO_PIN, GPIO_PIN_SET);
 }
 
 // Turn off the fan
 void Fan_OFF(void) {
-	HAL_GPIO_WritePin(FAN_GPIO_PORT, FAN_GPIO_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(FAN_GPIO_PORT, FAN_GPIO_PIN, GPIO_PIN_RESET);
 }
 
 // Read sensor values
 void ReadSensors(void) {
-	uint32_t raw_value;
+    uint32_t raw_value;
 
-	// Start ADC
-	if (HAL_ADC_Start(&hadc1) != HAL_OK) {
-		printf("Error: ADC Start failed!\r\n");
-		return;
-	}
+    // Start ADC
+    if (HAL_ADC_Start(&hadc1) != HAL_OK) {
+        printf("Error: ADC Start failed!\r\n");
+        return;
+    }
 
-	// LM35_1 (Channel 10)
-	if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
-		raw_value = HAL_ADC_GetValue(&hadc1);
-		lm35_1_temp = ((float)raw_value / ADC_RESOLUTION) * ADC_REF_VOLTAGE / LM35_VOLTAGE_TO_TEMP_CONV;
-	}
+    // LM35_1 (Channel 10)
+    if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
+        raw_value = HAL_ADC_GetValue(&hadc1);
+        lm35_1_temp = ((float)raw_value / ADC_RESOLUTION) * ADC_REF_VOLTAGE / LM35_VOLTAGE_TO_TEMP_CONV;
+    }
 
-	// LM35_2 (Channel 15)
-	if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
-		raw_value = HAL_ADC_GetValue(&hadc1);
-		lm35_2_temp = ((float)raw_value / ADC_RESOLUTION) * ADC_REF_VOLTAGE / LM35_VOLTAGE_TO_TEMP_CONV;
-	}
+    // LM35_2 (Channel 15)
+    if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
+        raw_value = HAL_ADC_GetValue(&hadc1);
+        lm35_2_temp = ((float)raw_value / ADC_RESOLUTION) * ADC_REF_VOLTAGE / LM35_VOLTAGE_TO_TEMP_CONV;
+    }
 
-	// Dust Sensor (Channel 5)
-	if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
-		raw_value = HAL_ADC_GetValue(&hadc1);
-		dust_density = ((float)raw_value / ADC_RESOLUTION) * ADC_REF_VOLTAGE * 100.0f; // Adjust scaling factor if needed
-	}
+    // Dust Sensor (Channel 5)
+    if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
+        raw_value = HAL_ADC_GetValue(&hadc1);
+        dust_density = ((float)raw_value / ADC_RESOLUTION) * ADC_REF_VOLTAGE * 100.0f; // Adjust scaling factor if needed
+    }
 
-	// Stop ADC
-	HAL_ADC_Stop(&hadc1);
+    // Stop ADC
+    HAL_ADC_Stop(&hadc1);
 
-	// Display sensor readings
-	printf("LM35_1: %.2f C | LM35_2: %.2f C | Dust: %.2f μg/m^3\r\n", lm35_1_temp, lm35_2_temp, dust_density);
+    // Display sensor readings
+    printf("LM35_1: %.2f C | LM35_2: %.2f C | Dust: %.2f μg/m^3\r\n", lm35_1_temp, lm35_2_temp, dust_density);
 }
 
-// Send alert if dust density exceeds threshold
+// Send alert if dust density exceeds threshold via Bluetooth (USART1)
 void SendDustAlert(float dustDensity) {
-	int sock;
-	struct sockaddr_in server_addr;
-	char message[100];
+    char message[100];
+    snprintf(message, sizeof(message), "ALERT: Dust level exceeded! %.2f μg/m^3\n", dustDensity);
 
-	snprintf(message, sizeof(message), "ALERT: Dust level exceeded! %.2f μg/m^3\n", dustDensity);
-
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0) {
-		printf("Error: Socket creation failed!\r\n");
-		return;
-	}
-
-	memset(&server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(SERVER_PORT);
-	inet_aton(SERVER_IP, &server_addr.sin_addr);
-
-	if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-		printf("Error: Connection to server failed!\r\n");
-		close(sock);
-		return;
-	}
-
-	if (send(sock, message, strlen(message), 0) < 0) {
-		printf("Error: Message send failed!\r\n");
-	} else {
-		printf("Message sent: %s\r\n", message);
-	}
-
-	close(sock);
+    // Transmit message via Bluetooth
+    if (HAL_UART_Transmit_IT(&huart1, (uint8_t *)message, strlen(message)) != HAL_OK) {
+        printf("Error: Bluetooth transmission failed!\r\n");
+    } else {
+        printf("Bluetooth message sent: %s\r\n", message);
+    }
 }
 
 // Task for reading sensors and controlling the fan
@@ -118,16 +95,17 @@ void mainTask(void *argument) {
             osSemaphoreRelease(alertSemaphoreHandle);
         }
 
-        printf("Delaying for 2 seconds...\r\n");
         osDelay(2000);  // Delay for 2 seconds
     }
 }
-// Task for sending alerts over Ethernet
+
+// Task for sending alerts via Bluetooth
 void secondTask(void *argument) {
-	for (;;) {
-		// Wait for semaphore to be released
-		if (osSemaphoreAcquire(alertSemaphoreHandle, osWaitForever) == osOK) {
-			SendDustAlert(dust_density);
-		}
-	}
+    for (;;) {
+        // Wait for semaphore to be released
+        if (osSemaphoreAcquire(alertSemaphoreHandle, osWaitForever) == osOK) {
+            SendDustAlert(dust_density); // Send alert via Bluetooth
+        }
+        osDelay(100); // Allow other tasks to run
+    }
 }
