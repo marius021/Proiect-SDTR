@@ -19,10 +19,9 @@
 void Fan_ON(void);
 void Fan_OFF(void);
 void ReadSensors(void);
-void SendDustAlert(float dustDensity);
 void StartSensorTask(void *argument);
 void StartCommTask(void *argument);
-void SendDustAlert(float dustDensity);
+void SendDustAlert(void);
 void BluetoothReceiveTask(void *argument);
 
 // External handles

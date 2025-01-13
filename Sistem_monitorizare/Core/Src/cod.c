@@ -60,16 +60,22 @@ void ReadSensors(void) {
     printf("LM35_1: %.2f C | LM35_2: %.2f C | Dust: %.2f μg/m^3\r\n", lm35_1_temp, lm35_2_temp, dust_density);
 }
 
-// Send alert if dust density exceeds threshold via Bluetooth (USART1)
-void SendDustAlert(float dustDensity) {
-    char message[100];
-    snprintf(message, sizeof(message), "ALERT: Dust level exceeded! %.2f μg/m^3\n", dustDensity);
+void SendDustAlert(void) {
+    char message[] = "ALERT\n"; // Message to send
 
-    // Transmit message via Bluetooth
-    if (HAL_UART_Transmit_IT(&huart1, (uint8_t *)message, strlen(message)) != HAL_OK) {
-        printf("Error: Bluetooth transmission failed!\r\n");
+    // Transmit the message via Bluetooth (USART2)
+    if (HAL_UART_Transmit_IT(&huart2, (uint8_t *)message, strlen(message)) != HAL_OK) {
+        printf("Error: Bluetooth message transmission failed!\r\n");
     } else {
         printf("Bluetooth message sent: %s\r\n", message);
+    }
+}
+
+// UART Transmission Complete Callback
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart->Instance == USART2) {
+        // This function is triggered after the transmission completes
+        printf("Bluetooth transmission completed.\r\n");
     }
 }
 
@@ -102,10 +108,11 @@ void mainTask(void *argument) {
 // Task for sending alerts via Bluetooth
 void secondTask(void *argument) {
     for (;;) {
-        // Wait for semaphore to be released
+        // Wait for semaphore to be released when dust density exceeds threshold
         if (osSemaphoreAcquire(alertSemaphoreHandle, osWaitForever) == osOK) {
-            SendDustAlert(dust_density); // Send alert via Bluetooth
+            SendDustAlert(); // Send "ALERT" message via HC-05
         }
-        osDelay(100); // Allow other tasks to run
+
+        osDelay(100); // Allow other tasks to execute
     }
 }
