@@ -674,7 +674,7 @@ void mainTask(void *argument) {
  80008aa:	edc7 7a03 	vstr	s15, [r7, #12]
         if (avg_temp > FAN_THRESHOLD) {
  80008ae:	edd7 7a03 	vldr	s15, [r7, #12]
- 80008b2:	ed9f 7a1d 	vldr	s14, [pc, #116]	@ 8000928 <mainTask+0xa8>
+ 80008b2:	eeb3 7a04 	vmov.f32	s14, #52	@ 0x41a00000  20.0
  80008b6:	eef4 7ac7 	vcmpe.f32	s15, s14
  80008ba:	eef1 fa10 	vmrs	APSR_nzcv, fpscr
  80008be:	dd0b      	ble.n	80008d8 <mainTask+0x58>
@@ -684,7 +684,7 @@ void mainTask(void *argument) {
  80008c4:	edd7 7a03 	vldr	s15, [r7, #12]
  80008c8:	eeb7 7ae7 	vcvt.f64.f32	d7, s15
  80008cc:	ec53 2b17 	vmov	r2, r3, d7
- 80008d0:	4816      	ldr	r0, [pc, #88]	@ (800092c <mainTask+0xac>)
+ 80008d0:	4815      	ldr	r0, [pc, #84]	@ (8000928 <mainTask+0xa8>)
  80008d2:	f01c ff8f 	bl	801d7f4 <iprintf>
  80008d6:	e00a      	b.n	80008ee <mainTask+0x6e>
         } else {
@@ -694,15 +694,15 @@ void mainTask(void *argument) {
  80008dc:	edd7 7a03 	vldr	s15, [r7, #12]
  80008e0:	eeb7 7ae7 	vcvt.f64.f32	d7, s15
  80008e4:	ec53 2b17 	vmov	r2, r3, d7
- 80008e8:	4811      	ldr	r0, [pc, #68]	@ (8000930 <mainTask+0xb0>)
+ 80008e8:	4810      	ldr	r0, [pc, #64]	@ (800092c <mainTask+0xac>)
  80008ea:	f01c ff83 	bl	801d7f4 <iprintf>
         }
 
         // Release semaphore if dust density exceeds threshold
         if (dust_density > DUST_THRESHOLD) {
- 80008ee:	4b11      	ldr	r3, [pc, #68]	@ (8000934 <mainTask+0xb4>)
+ 80008ee:	4b10      	ldr	r3, [pc, #64]	@ (8000930 <mainTask+0xb0>)
  80008f0:	edd3 7a00 	vldr	s15, [r3]
- 80008f4:	eeb3 7a04 	vmov.f32	s14, #52	@ 0x41a00000  20.0
+ 80008f4:	ed9f 7a0f 	vldr	s14, [pc, #60]	@ 8000934 <mainTask+0xb4>
  80008f8:	eef4 7ac7 	vcmpe.f32	s15, s14
  80008fc:	eef1 fa10 	vmrs	APSR_nzcv, fpscr
  8000900:	dd07      	ble.n	8000912 <mainTask+0x92>
@@ -724,10 +724,10 @@ void mainTask(void *argument) {
  800091c:	0801f870 	.word	0x0801f870
  8000920:	24004c60 	.word	0x24004c60
  8000924:	24004c64 	.word	0x24004c64
- 8000928:	42480000 	.word	0x42480000
- 800092c:	0801f890 	.word	0x0801f890
- 8000930:	0801f8ac 	.word	0x0801f8ac
- 8000934:	24004c68 	.word	0x24004c68
+ 8000928:	0801f890 	.word	0x0801f890
+ 800092c:	0801f8ac 	.word	0x0801f8ac
+ 8000930:	24004c68 	.word	0x24004c68
+ 8000934:	42480000 	.word	0x42480000
  8000938:	0801f8cc 	.word	0x0801f8cc
  800093c:	24004ef4 	.word	0x24004ef4
 

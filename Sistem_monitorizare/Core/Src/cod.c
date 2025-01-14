@@ -5,8 +5,8 @@
 #define ADC_RESOLUTION 4095.0f
 #define ADC_REF_VOLTAGE 3.3f
 #define LM35_VOLTAGE_TO_TEMP_CONV 0.01f // 10 mV/°C
-#define DUST_THRESHOLD 20.0f
-#define FAN_THRESHOLD 50.0f // Temperature threshold for fan activation
+#define DUST_THRESHOLD 50.0f
+#define FAN_THRESHOLD 20.0f // Temperature threshold for fan activation
 #define FAN_GPIO_PORT GPIOA
 #define FAN_GPIO_PIN GPIO_PIN_6
 
