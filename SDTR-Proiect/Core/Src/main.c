@@ -132,7 +132,11 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  SendDustAlert();
+	  char buffer[] = "505dfgd";
+		if (HAL_UART_Transmit(&huart2, (uint8_t *)buffer, strlen(buffer), HAL_MAX_DELAY) != HAL_OK)
+		{
+			Error_Handler();
+		}
 	  HAL_Delay(1000);
     /* USER CODE BEGIN 3 */
   }
