@@ -65,7 +65,7 @@ void ReadSensors(void) {
 }
 
 void SendDustAlert(void) {
-	char message[] = "ALERT\n"; // Message to send
+	char message[] = "Dust threshold passed!\n"; // Message to send
 
 	// Transmit the message via Bluetooth (USART2)
 	if (HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), HAL_MAX_DELAY) != HAL_OK) {
@@ -86,13 +86,6 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 // Task for reading sensors and controlling the fan
 void mainTask(void *argument) {
 	for (;;) {
-
-		/* uint32_t currentTime = __HAL_TIM_GET_COUNTER(&htim2);  // Citește valoarea curentă a timerului
-    	  uint32_t timeSinceLastExecution = currentTime - lastExecutionTime_mainTask;
-    	  lastExecutionTime_mainTask = currentTime;
-
-    	        printf("Time since last mainTask execution: %lu μs\r\n", timeSinceLastExecution);
-		 */
 
 		printf("Starting measurement cycle...\r\n");
 		ReadSensors();  // Perform sensor measurements

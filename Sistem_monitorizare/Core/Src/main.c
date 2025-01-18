@@ -126,6 +126,12 @@ int _write(int file, char *ptr, int len)
 	return len;
 }
 
+void InitCycleCounter(void) {
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; // Activează accesul la DWT
+    DWT->CYCCNT = 0;                                // Resetează contorul
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;            // Activează contorul de cicluri
+}
+
 
 
 /* USER CODE END 0 */
@@ -147,7 +153,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  InitCycleCounter();
   /* USER CODE END Init */
 
   /* Configure the system clock */
