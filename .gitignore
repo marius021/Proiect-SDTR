@@ -21,3 +21,6 @@ release/
 *.aps
 *.vs/
 *.vscode/
+
+# Ingore a test project
+/SDTR-Proiect
