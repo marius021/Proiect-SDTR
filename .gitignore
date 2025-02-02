@@ -24,3 +24,6 @@ release/
 
 # Ingore a test project
 SDTR-Proiect/
+
+# Ignore test .py file for TCP/IP 
+server.py
