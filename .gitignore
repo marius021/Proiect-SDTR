@@ -23,4 +23,4 @@ release/
 *.vscode/
 
 # Ingore a test project
-/SDTR-Proiect
+SDTR-Proiect/
